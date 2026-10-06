@@ -1,0 +1,385 @@
+# Stash Ultimate Availability Check v4
+# Normalized status logic based on iqiancheng.github.io/posts/stash-availability-check-tiles/
+# Generated: 2026-10-05
+#
+# Normalized status vocabulary:
+#   Available (XX) = available, region/country extracted
+#   Available      = available, region unknown
+#   N/A / Not Available = current egress IP does not support the service
+#   Blocked        = service explicitly rejects the egress IP/region
+#   Network Error  = network failure / timeout / unrecognized transport failure
+# Netflix keeps its native unlock levels:
+#   No Restriction (XX) = full Netflix catalogue unlocked
+#   Originals Only (XX) = Netflix Originals only
+
+name: "🌐 Ultimate Availability Check v4"
+desc: "AI / 流媒体 / 出口地区综合检测（15项・统一状态）"
+
+tiles:
+  - name: ultimate-chatgpt-web
+    title: "ChatGPT Web"
+    content: "检测中…"
+    icon: "https://raw.githubusercontent.com/pengyanai/misc/refs/heads/main/collapsed-tiles/img/chatgpt.png"
+    backgroundColor: "#10A37F"
+    collapsed: true
+    url: "https://chatgpt.com"
+
+  - name: ultimate-chatgpt-app
+    title: "ChatGPT App"
+    content: "检测中…"
+    icon: "https://raw.githubusercontent.com/pengyanai/misc/refs/heads/main/collapsed-tiles/img/chatgpt.png"
+    backgroundColor: "#19C37D"
+    collapsed: true
+
+  - name: ultimate-codex
+    title: "Codex"
+    content: "检测中…"
+    icon: "https://raw.githubusercontent.com/pengyanai/misc/refs/heads/main/collapsed-tiles/img/codex.png"
+    backgroundColor: "#343541"
+    collapsed: true
+    url: "https://chatgpt.com/codex"
+
+  - name: ultimate-claude
+    title: "Claude"
+    content: "检测中…"
+    icon: "https://raw.githubusercontent.com/pengyanai/misc/refs/heads/main/collapsed-tiles/img/claude.png"
+    backgroundColor: "#CC9B7A"
+    collapsed: true
+    url: "https://claude.ai"
+
+  - name: ultimate-gemini
+    title: "Gemini"
+    content: "检测中…"
+    icon: "https://raw.githubusercontent.com/pengyanai/misc/refs/heads/main/collapsed-tiles/img/gemini.png"
+    backgroundColor: "#4F7DF3"
+    collapsed: true
+    url: "https://gemini.google.com"
+
+  - name: ultimate-grok
+    title: "Grok"
+    content: "检测中…"
+    icon: "https://raw.githubusercontent.com/pengyanai/misc/refs/heads/main/collapsed-tiles/img/grok.png"
+    backgroundColor: "#222222"
+    collapsed: true
+    url: "https://grok.com"
+
+  - name: ultimate-copilot
+    title: "Copilot"
+    content: "检测中…"
+    icon: "https://raw.githubusercontent.com/pengyanai/misc/refs/heads/main/collapsed-tiles/img/copilot.png"
+    backgroundColor: "#4F8EF7"
+    collapsed: true
+    url: "https://copilot.microsoft.com"
+
+  - name: ultimate-youtube
+    title: "YouTube Premium"
+    content: "检测中…"
+    icon: "https://raw.githubusercontent.com/pengyanai/misc/refs/heads/main/collapsed-tiles/img/youtube.png"
+    backgroundColor: "#FF0000"
+    collapsed: true
+    url: "https://www.youtube.com/premium"
+
+  - name: ultimate-netflix
+    title: "Netflix"
+    content: "检测中…"
+    icon: "https://raw.githubusercontent.com/pengyanai/misc/refs/heads/main/collapsed-tiles/img/netflix.png"
+    backgroundColor: "#E50914"
+    collapsed: true
+    url: "https://www.netflix.com"
+
+  - name: ultimate-disney
+    title: "Disney+"
+    content: "检测中…"
+    icon: "https://raw.githubusercontent.com/pengyanai/misc/refs/heads/main/collapsed-tiles/img/disney.png"
+    backgroundColor: "#2463EB"
+    collapsed: true
+    url: "https://www.disneyplus.com"
+
+  - name: ultimate-spotify
+    title: "Spotify"
+    content: "检测中…"
+    icon: "https://raw.githubusercontent.com/pengyanai/misc/refs/heads/main/collapsed-tiles/img/spotify.png"
+    backgroundColor: "#1DB954"
+    collapsed: true
+    url: "https://www.spotify.com"
+
+  - name: ultimate-apple
+    title: "Apple"
+    content: "检测中…"
+    icon: "apple.logo"
+    backgroundColor: "#5C5C5C"
+    collapsed: true
+
+  - name: ultimate-primevideo
+    title: "Prime Video"
+    content: "检测中…"
+    icon: "play.rectangle.fill"
+    backgroundColor: "#00A8E0"
+    collapsed: true
+    url: "https://www.primevideo.com"
+
+  - name: ultimate-tiktok
+    title: "TikTok"
+    content: "检测中…"
+    icon: "music.note"
+    backgroundColor: "#333333"
+    collapsed: true
+    url: "https://www.tiktok.com"
+
+  - name: ultimate-bilibili
+    title: "Bilibili"
+    content: "检测中…"
+    icon: "play.tv.fill"
+    backgroundColor: "#FB7299"
+    collapsed: true
+    url: "https://www.bilibili.com"
+
+script-providers:
+  ultimate-chatgpt-web:
+    interval: 86400
+    payload: |
+      $httpClient.get({url:"https://api.openai.com/compliance/cookie_requirements",timeout:8}, (error,response,data) => {
+        if (error) return $done({content:"Network Error",backgroundColor:"#F59E0B"});
+        const body = String(data || "").toLowerCase();
+        if (body.includes("unsupported_country")) return $done({content:"Blocked",backgroundColor:"#E5484D"});
+        $done({content:"Available",backgroundColor:"#10A37F"});
+      });
+
+  ultimate-chatgpt-app:
+    interval: 86400
+    payload: |
+      $httpClient.get({url:"https://ios.chat.openai.com",timeout:8,headers:{"User-Agent":"Mozilla/5.0"}}, (error,response,data) => {
+        if (error) return $done({content:"Network Error",backgroundColor:"#F59E0B"});
+        const body = String(data || "").toLowerCase();
+        if (body.includes("disallowed isp") || body.includes("been blocked") || body.includes("unsupported_country")) {
+          return $done({content:"Blocked",backgroundColor:"#E5484D"});
+        }
+        $done({content:"Available",backgroundColor:"#19C37D"});
+      });
+
+  ultimate-codex:
+    interval: 86400
+    payload: |
+      $httpClient.get({url:"https://api.openai.com/compliance/cookie_requirements",timeout:8}, (error,response,data) => {
+        if (error) return $done({content:"Network Error",backgroundColor:"#F59E0B"});
+        const body = String(data || "").toLowerCase();
+        if (body.includes("unsupported_country")) return $done({content:"Blocked",backgroundColor:"#E5484D"});
+        $done({content:"Available",backgroundColor:"#343541"});
+      });
+
+  ultimate-claude:
+    interval: 86400
+    payload: |
+      $httpClient.get({url:"https://claude.ai",timeout:8,headers:{"User-Agent":"Mozilla/5.0"}}, (error,response,data) => {
+        if (error) return $done({content:"Network Error",backgroundColor:"#F59E0B"});
+        const body = String(data || "").toLowerCase();
+        if (/not available in your country|unsupported country|unavailable in your region/.test(body)) {
+          return $done({content:"Not Available",backgroundColor:"#E5484D"});
+        }
+        if (body.includes("claude")) return $done({content:"Available",backgroundColor:"#CC9B7A"});
+        $done({content:"Network Error",backgroundColor:"#F59E0B"});
+      });
+
+  ultimate-gemini:
+    interval: 86400
+    payload: |
+      $httpClient.get({url:"https://gemini.google.com",timeout:8,headers:{"User-Agent":"Mozilla/5.0"}}, (error,response,data) => {
+        if (error) return $done({content:"Network Error",backgroundColor:"#F59E0B"});
+        const body = String(data || "").toLowerCase();
+        if (/not available in your country|unsupported country|unavailable in your region/.test(body)) {
+          return $done({content:"N/A",backgroundColor:"#E5484D"});
+        }
+        if (body.includes("gemini")) return $done({content:"Available",backgroundColor:"#4F7DF3"});
+        $done({content:"Network Error",backgroundColor:"#F59E0B"});
+      });
+
+  ultimate-grok:
+    interval: 86400
+    payload: |
+      $httpClient.get({url:"https://grok.com",timeout:8,headers:{"User-Agent":"Mozilla/5.0"}}, (error,response,data) => {
+        if (error) return $done({content:"Network Error",backgroundColor:"#F59E0B"});
+        const body = String(data || "").toLowerCase();
+        if (/not available in your country|unsupported country|unavailable in your region|not yet available/.test(body)) {
+          return $done({content:"Not Available",backgroundColor:"#E5484D"});
+        }
+        if (body.includes("grok") || body.includes("xai")) return $done({content:"Available",backgroundColor:"#222222"});
+        $done({content:"Network Error",backgroundColor:"#F59E0B"});
+      });
+
+  ultimate-copilot:
+    interval: 86400
+    payload: |
+      const URL = "https://copilot.microsoft.com/c/api/user/eligibility";
+      $httpClient.get({url:URL,timeout:8,headers:{"User-Agent":"Mozilla/5.0","Accept":"application/json"}}, (error,response,data) => {
+        if (error || !response) return $done({content:"Network Error",backgroundColor:"#F59E0B"});
+        const status = Number(response.status || response.statusCode || 0);
+        const body = String(data || "");
+        const lower = body.toLowerCase();
+
+        if (/not available in your country|not available in your region|unsupported country|unsupported region|unavailable in your country|unavailable in your region/.test(lower)) {
+          return $done({content:"Not Available",backgroundColor:"#E5484D"});
+        }
+        if (status === 403 || status === 451 || /access denied|forbidden|blocked/.test(lower)) {
+          return $done({content:"Blocked",backgroundColor:"#E5484D"});
+        }
+        if (status >= 200 && status < 300) {
+          try {
+            JSON.parse(body || "{}");
+            return $done({content:"Available",backgroundColor:"#4F8EF7"});
+          } catch (_) {
+            if (body.length > 0) return $done({content:"Available",backgroundColor:"#4F8EF7"});
+          }
+        }
+        $done({content:"Network Error",backgroundColor:"#F59E0B"});
+      });
+
+  ultimate-youtube:
+    interval: 86400
+    payload: |
+      function extractCountry(body) {
+        const patterns = [/"INNERTUBE_CONTEXT_GL"\s*:\s*"([A-Z]{2})"/,/"countryCode"\s*:\s*"([A-Z]{2})"/,/"GL"\s*:\s*"([A-Z]{2})"/,/"gl"\s*:\s*"([A-Z]{2})"/];
+        for (const re of patterns) { const m = body.match(re); if (m) return m[1]; }
+        if (body.indexOf("www.google.cn") !== -1) return "CN";
+        return "";
+      }
+      $httpClient.get({url:"https://www.youtube.com/",timeout:8,headers:{"User-Agent":"Mozilla/5.0","Accept-Language":"en-US,en;q=0.9"}}, (error,response,data) => {
+        if (error || !response) return $done({content:"Network Error",backgroundColor:"#F59E0B"});
+        const status = Number(response.status || response.statusCode || 0);
+        const body = String(data || "");
+        if (status === 403 || status === 451) return $done({content:"Not Available",backgroundColor:"#E5484D"});
+        const ok = body.includes("ytInitialData") || body.includes("INNERTUBE_CONTEXT") || body.includes("youtube.com");
+        if (status >= 200 && status < 400 && ok) {
+          const cc = extractCountry(body);
+          return $done({content:cc ? `Available (${cc})` : "Available",backgroundColor:"#FF0000"});
+        }
+        $done({content:"Network Error",backgroundColor:"#F59E0B"});
+      });
+
+  ultimate-netflix:
+    interval: 86400
+    payload: |
+      function checkTitle(id) {
+        return new Promise(resolve => {
+          $httpClient.get({url:`https://www.netflix.com/title/${id}`,timeout:8,headers:{"User-Agent":"Mozilla/5.0"}}, (error,response,data) => {
+            if (error || !response) return resolve({error:true,country:""});
+            const headers = response.headers || {};
+            const u = headers["X-Originating-Url"] || headers["x-originating-url"] || "";
+            if (!u) return resolve({error:false,country:""});
+            const parts = u.split("/");
+            const loc = parts[3] || "";
+            if (loc === "title") return resolve({error:false,country:"US"});
+            return resolve({error:false,country:(loc.split("-")[0] || "").toUpperCase()});
+          });
+        });
+      }
+      (async () => {
+        const full = await checkTitle(70143836);
+        if (full.error) return $done({content:"Network Error",backgroundColor:"#F59E0B"});
+        if (full.country) return $done({content:`No Restriction (${full.country})`,backgroundColor:"#E50914"});
+        const originals = await checkTitle(80197526);
+        if (originals.error) return $done({content:"Network Error",backgroundColor:"#F59E0B"});
+        if (originals.country) return $done({content:`Originals Only (${originals.country})`,backgroundColor:"#E50914"});
+        $done({content:"Not Available",backgroundColor:"#E5484D"});
+      })().catch(() => $done({content:"Network Error",backgroundColor:"#F59E0B"}));
+
+  ultimate-disney:
+    interval: 86400
+    payload: |
+      $httpClient.get({url:"https://www.disneyplus.com",timeout:8,headers:{"User-Agent":"Mozilla/5.0"}}, (error,response,data) => {
+        if (error) return $done({content:"Network Error",backgroundColor:"#F59E0B"});
+        const body = String(data || "").toLowerCase();
+        if (/not available in your region|not available in your country|service is unavailable/.test(body)) {
+          return $done({content:"N/A",backgroundColor:"#E5484D"});
+        }
+        if (body.includes("disney")) return $done({content:"Available",backgroundColor:"#2463EB"});
+        $done({content:"Network Error",backgroundColor:"#F59E0B"});
+      });
+
+  ultimate-spotify:
+    interval: 86400
+    payload: |
+      $httpClient.get({url:"https://spclient.wg.spotify.com/signup/public/v1/account?validate=1&email=test%40test.com",timeout:8,headers:{"User-Agent":"Mozilla/5.0","Accept-Language":"en"}}, (error,response,data) => {
+        if (error) return $done({content:"Network Error",backgroundColor:"#F59E0B"});
+        let json = null;
+        try { json = JSON.parse(String(data || "")); } catch (_) {}
+        if (!json) return $done({content:"Network Error",backgroundColor:"#F59E0B"});
+        const cc = String(json.country || "").toUpperCase();
+        if (json.is_country_launched === false) return $done({content:"N/A",backgroundColor:"#E5484D"});
+        if (cc) return $done({content:`Available (${cc})`,backgroundColor:"#1DB954"});
+        $done({content:"Available",backgroundColor:"#1DB954"});
+      });
+
+  ultimate-apple:
+    interval: 86400
+    payload: |
+      $httpClient.get({url:"https://gspe1-ssl.ls.apple.com/pep/gcc",timeout:8}, (error,response,data) => {
+        if (error) return $done({content:"Network Error",backgroundColor:"#F59E0B"});
+        const cc = String(data || "").trim().toUpperCase();
+        if (/^[A-Z]{2}$/.test(cc)) return $done({content:`Available (${cc})`,backgroundColor:"#5C5C5C"});
+        $done({content:"Network Error",backgroundColor:"#F59E0B"});
+      });
+
+  ultimate-primevideo:
+    interval: 86400
+    payload: |
+      $httpClient.get({url:"https://www.primevideo.com",timeout:8,headers:{"User-Agent":"Mozilla/5.0","Accept-Language":"en-US,en;q=0.9"}}, (error,response,data) => {
+        if (error || !data) return $done({content:"Network Error",backgroundColor:"#F59E0B"});
+        const body = String(data);
+        if (body.includes("isServiceRestricted")) return $done({content:"Not Available",backgroundColor:"#E5484D"});
+        const m = body.match(/"currentTerritory"\s*:\s*"([A-Za-z]{2})"/);
+        if (m) return $done({content:`Available (${m[1].toUpperCase()})`,backgroundColor:"#00A8E0"});
+        $done({content:"Network Error",backgroundColor:"#F59E0B"});
+      });
+
+  ultimate-tiktok:
+    interval: 86400
+    payload: |
+      function country(body) {
+        let m = body.match(/(?:^|\n)loc=([A-Za-z]{2})(?:\n|$)/);
+        if (m) return m[1].toUpperCase();
+        m = body.match(/"region"\s*:\s*"([A-Za-z]{2})(?:-([A-Za-z]{2}))?"/);
+        if (m) return String(m[2] || m[1]).toUpperCase();
+        return "";
+      }
+      $httpClient.get({url:"https://www.tiktok.com/cdn-cgi/trace",timeout:8,headers:{"User-Agent":"Mozilla/5.0","Accept-Language":"en"}}, (error,response,data) => {
+        if (error || !response) return $done({content:"Network Error",backgroundColor:"#F59E0B"});
+        const status = Number(response.status || response.statusCode || 0);
+        const body = String(data || "");
+        const lower = body.toLowerCase();
+        if (status === 403 || status === 451 || /access denied|not available in your region|tiktok is not available/.test(lower)) {
+          return $done({content:"Not Available",backgroundColor:"#E5484D"});
+        }
+        if (status >= 200 && status < 300) {
+          const cc = country(body);
+          return $done({content:cc ? `Available (${cc})` : "Available",backgroundColor:"#333333"});
+        }
+        $done({content:"Network Error",backgroundColor:"#F59E0B"});
+      });
+
+  ultimate-bilibili:
+    interval: 86400
+    payload: |
+      function probe(url) {
+        return new Promise(resolve => {
+          $httpClient.get({url:url,timeout:8}, (error,response,data) => {
+            if (error || !data) return resolve("error");
+            try {
+              const json = JSON.parse(data);
+              if (json.code === 0) return resolve("ok");
+              if (json.code === -10403) return resolve("no");
+              return resolve("error");
+            } catch (_) { return resolve("error"); }
+          });
+        });
+      }
+      (async () => {
+        const hmtUrl = "https://api.bilibili.com/pgc/player/web/playurl?avid=18281381&cid=29892777&qn=0&type=&otype=json&ep_id=183799&fourk=1&fnver=0&fnval=16&module=bangumi";
+        const cnUrl = "https://api.bilibili.com/pgc/player/web/playurl?avid=82846771&qn=0&type=&otype=json&ep_id=307247&fourk=1&fnver=0&fnval=16&module=bangumi";
+        const result = await Promise.all([probe(hmtUrl), probe(cnUrl)]);
+        const hmt = result[0], cn = result[1];
+        if (hmt === "ok" && cn === "ok") return $done({content:"Available (CN/HMT)",backgroundColor:"#FB7299"});
+        if (hmt === "ok") return $done({content:"Available (HMT)",backgroundColor:"#FB7299"});
+        if (cn === "ok") return $done({content:"Available (CN)",backgroundColor:"#FB7299"});
+        if (hmt === "no" && cn === "no") return $done({content:"Not Available",backgroundColor:"#E5484D"});
+        $done({content:"Network Error",backgroundColor:"#F59E0B"});
+      })().catch(() => $done({content:"Network Error",backgroundColor:"#F59E0B"}));

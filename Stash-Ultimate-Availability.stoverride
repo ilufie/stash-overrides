@@ -209,51 +209,61 @@ script-providers:
   ultimate-copilot:
     interval: 86400
     payload: |
-      const API = "https://copilot.microsoft.com/c/api/user/eligibility";
-      const HOME = "https://copilot.microsoft.com/";
-      const HEADERS = {
-        "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36 Edg/139.0.0.0",
-        "Accept":"application/json, text/plain, */*",
-        "Accept-Language":"en-US,en;q=0.9",
-        "Sec-Fetch-Site":"none",
-        "Sec-Fetch-Mode":"no-cors",
-        "Sec-Fetch-Dest":"empty",
-        "Referer":"https://copilot.microsoft.com/"
-      };
-      function finishFrom(status, body, allowHomeFallback) {
-        const lower = String(body || "").toLowerCase();
-        if (/not available in your country|not available in your region|unsupported country|unsupported region|unavailable in your country|unavailable in your region/.test(lower)) {
-          $done({content:"Not Available",backgroundColor:"#E5484D"});
-          return true;
-        }
-        if (status === 403 || status === 451 || /access denied|forbidden|blocked/.test(lower)) {
-          $done({content:"Blocked",backgroundColor:"#E5484D"});
-          return true;
-        }
-        if (status >= 200 && status < 300) {
-          if (/isvisionenabled|copilot|microsoft/.test(lower) || lower.length > 0) {
-            $done({content:"Available",backgroundColor:"#4F8EF7"});
-            return true;
-          }
-        }
-        return false;
-      }
-      function fallback() {
-        $httpClient.get({url:HOME,timeout:10,headers:{
-          "User-Agent":HEADERS["User-Agent"],
-          "Accept":"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-          "Accept-Language":"en-US,en;q=0.9"
-        }}, (error,response,data) => {
-          if (error || !response) return $done({content:"Network Error",backgroundColor:"#F59E0B"});
-          const status = Number(response.status || response.statusCode || 0);
-          if (!finishFrom(status,data,false)) $done({content:"Network Error",backgroundColor:"#F59E0B"});
+      async function request(method, params) {
+        return new Promise((resolve, reject) => {
+          const httpMethod = $httpClient[method.toLowerCase()];
+          httpMethod(params, (error, response, data) => {
+            resolve({ error, response, data });
+          });
         });
       }
-      $httpClient.get({url:API,timeout:10,headers:HEADERS}, (error,response,data) => {
-        if (error || !response) return fallback();
-        const status = Number(response.status || response.statusCode || 0);
-        if (!finishFrom(status,data,true)) fallback();
-      });
+
+      async function main() {
+        const { error, response, data } = await request(
+          "GET",
+          "https://copilot.microsoft.com"
+        );
+
+        if (error) {
+          $done({
+            content: "Network Error",
+            backgroundColor: "",
+          });
+          return;
+        }
+        const body = (data || "").toLowerCase();
+        if (
+          body.includes("not available in your country") ||
+          body.includes("unsupported country") ||
+          body.includes("unavailable in your region")
+        ) {
+          $done({
+            content: "N/A",
+            backgroundColor: "",
+          });
+          return;
+        }
+
+        if (body.includes("copilot") || body.includes("microsoft")) {
+          $done({
+            content: "Available",
+            backgroundColor: "#0078D4",
+          });
+          return;
+        }
+        $done({
+          content: "Unknown",
+          backgroundColor: "",
+        });
+      }
+
+      (async () => {
+        main()
+          .then((_) => {})
+          .catch((error) => {
+            $done({});
+          });
+      })();
 
   ultimate-youtube:
     interval: 86400

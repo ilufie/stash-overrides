@@ -1,4 +1,4 @@
-# Stash Ultimate Availability Check v4.2 manual fix
+# Stash Ultimate Availability Check v4.2 manual Copilot fix
 # Normalized status logic based on iqiancheng.github.io/posts/stash-availability-check-tiles/
 # Generated: 2026-10-05
 #
@@ -12,7 +12,7 @@
 #   No Restriction (XX) = full Netflix catalogue unlocked
 #   Originals Only (XX) = Netflix Originals only
 
-name: "🌐 Ultimate Availability Check v4.2 Manual Fix"
+name: "🌐 Ultimate Availability Check v4.2 Manual Copilot Fix"
 desc: "AI / 流媒体 / 出口地区综合检测（15项・统一状态）"
 
 tiles:
@@ -209,20 +209,55 @@ script-providers:
   ultimate-copilot:
     interval: 86400
     payload: |
-      const API = "https://copilot.microsoft.com/c/api/user/eligibility";
+      const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36 Edg/139.0.0.0";
       const HOME = "https://copilot.microsoft.com/";
-      const HEADERS = {
-        "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36 Edg/139.0.0.0",
-        "Accept":"application/json, text/plain, */*",
-        "Accept-Language":"en-US,en;q=0.9",
-        "Sec-Fetch-Site":"none",
-        "Sec-Fetch-Mode":"no-cors",
-        "Sec-Fetch-Dest":"empty",
-        "Referer":"https://copilot.microsoft.com/"
-      };
-      function finishFrom(status, body, allowHomeFallback) {
+      const CHAT = "https://copilot.microsoft.com/turing/conversation/chats?bundleVersion=1.1342.3-cplt.12";
+      const ELIG = "https://copilot.microsoft.com/c/api/user/eligibility";
+
+      function req(url, accept) {
+        return new Promise(resolve => {
+          $httpClient.get({
+            url,
+            timeout: 12,
+            headers: {
+              "User-Agent": UA,
+              "Accept": accept || "*/*",
+              "Accept-Language": "en-US,en;q=0.9",
+              "Referer": "https://copilot.microsoft.com/"
+            }
+          }, (error, response, data) => {
+            resolve({
+              error: !!error || !response,
+              status: Number(response && (response.status || response.statusCode) || 0),
+              body: String(data || "")
+            });
+          });
+        });
+      }
+
+      function regionFromHome(body) {
+        const patterns = [
+          /RevIpCC\s*:\s*["']([A-Za-z]{2})["']/i,
+          /["']RevIpCC["']\s*:\s*["']([A-Za-z]{2})["']/i,
+          /["']countryCode["']\s*:\s*["']([A-Za-z]{2})["']/i
+        ];
+        for (const re of patterns) {
+          const m = String(body || "").match(re);
+          if (m) return m[1].toUpperCase();
+        }
+        return "";
+      }
+
+      function finishAvailable(region) {
+        return $done({
+          content: region ? `Available (${region})` : "Available",
+          backgroundColor: "#4F8EF7"
+        });
+      }
+
+      function finishRestricted(status, body) {
         const lower = String(body || "").toLowerCase();
-        if (/not available in your country|not available in your region|unsupported country|unsupported region|unavailable in your country|unavailable in your region/.test(lower)) {
+        if (/not available in your country|not available in your region|unsupported country|unsupported region|unavailable in your country|unavailable in your region|geo.?restricted/.test(lower)) {
           $done({content:"Not Available",backgroundColor:"#E5484D"});
           return true;
         }
@@ -230,30 +265,56 @@ script-providers:
           $done({content:"Blocked",backgroundColor:"#E5484D"});
           return true;
         }
-        if (status >= 200 && status < 300) {
-          if (/isvisionenabled|copilot|microsoft/.test(lower) || lower.length > 0) {
-            $done({content:"Available",backgroundColor:"#4F8EF7"});
-            return true;
-          }
-        }
         return false;
       }
-      function fallback() {
-        $httpClient.get({url:HOME,timeout:10,headers:{
-          "User-Agent":HEADERS["User-Agent"],
-          "Accept":"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-          "Accept-Language":"en-US,en;q=0.9"
-        }}, (error,response,data) => {
-          if (error || !response) return $done({content:"Network Error",backgroundColor:"#F59E0B"});
-          const status = Number(response.status || response.statusCode || 0);
-          if (!finishFrom(status,data,false)) $done({content:"Network Error",backgroundColor:"#F59E0B"});
-        });
-      }
-      $httpClient.get({url:API,timeout:10,headers:HEADERS}, (error,response,data) => {
-        if (error || !response) return fallback();
-        const status = Number(response.status || response.statusCode || 0);
-        if (!finishFrom(status,data,true)) fallback();
-      });
+
+      (async () => {
+        // Primary probe: same availability check used by mature region-restriction scripts.
+        const [home, chat] = await Promise.all([
+          req(HOME, "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"),
+          req(CHAT, "application/json,text/plain,*/*")
+        ]);
+
+        const region = home.error ? "" : regionFromHome(home.body);
+
+        if (!chat.error) {
+          if (finishRestricted(chat.status, chat.body)) return;
+          try {
+            const json = JSON.parse(chat.body || "{}");
+            const value = String(json && json.result && json.result.value || "");
+            if (value.toLowerCase() === "success") return finishAvailable(region);
+            if (value) return $done({content:"Not Available",backgroundColor:"#E5484D"});
+          } catch (_) {}
+          if (chat.status >= 200 && chat.status < 300 && /success/i.test(chat.body)) {
+            return finishAvailable(region);
+          }
+        }
+
+        // Secondary probe: Microsoft eligibility endpoint.
+        const elig = await req(ELIG, "application/json,text/plain,*/*");
+        if (!elig.error) {
+          if (finishRestricted(elig.status, elig.body)) return;
+          if (elig.status >= 200 && elig.status < 300) {
+            try {
+              JSON.parse(elig.body || "{}");
+              return finishAvailable(region);
+            } catch (_) {
+              if (elig.body.length > 0) return finishAvailable(region);
+            }
+          }
+        }
+
+        // Final fallback: if the Copilot homepage itself is reachable and clearly loaded,
+        // treat the service as reachable instead of a false Network Error.
+        if (!home.error) {
+          if (finishRestricted(home.status, home.body)) return;
+          if (home.status >= 200 && home.status < 400 && /copilot|microsoft/i.test(home.body)) {
+            return finishAvailable(region);
+          }
+        }
+
+        $done({content:"Network Error",backgroundColor:"#F59E0B"});
+      })().catch(() => $done({content:"Network Error",backgroundColor:"#F59E0B"}));
 
   ultimate-youtube:
     interval: 86400

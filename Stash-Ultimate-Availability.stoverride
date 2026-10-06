@@ -1,4 +1,4 @@
-# Stash Ultimate Availability Check v4
+# Stash Ultimate Availability Check v4.2 manual fix
 # Normalized status logic based on iqiancheng.github.io/posts/stash-availability-check-tiles/
 # Generated: 2026-10-05
 #
@@ -12,7 +12,7 @@
 #   No Restriction (XX) = full Netflix catalogue unlocked
 #   Originals Only (XX) = Netflix Originals only
 
-name: "🌐 Ultimate Availability Check v4"
+name: "🌐 Ultimate Availability Check v4.2 Manual Fix"
 desc: "AI / 流媒体 / 出口地区综合检测（15项・统一状态）"
 
 tiles:
@@ -103,7 +103,7 @@ tiles:
     collapsed: true
     url: "https://www.spotify.com"
 
-  - name: ultimate-apple
+  - name: ultimate-apple-v2
     title: "Apple"
     content: "检测中…"
     icon: "apple.logo"
@@ -209,28 +209,50 @@ script-providers:
   ultimate-copilot:
     interval: 86400
     payload: |
-      const URL = "https://copilot.microsoft.com/c/api/user/eligibility";
-      $httpClient.get({url:URL,timeout:8,headers:{"User-Agent":"Mozilla/5.0","Accept":"application/json"}}, (error,response,data) => {
-        if (error || !response) return $done({content:"Network Error",backgroundColor:"#F59E0B"});
-        const status = Number(response.status || response.statusCode || 0);
-        const body = String(data || "");
-        const lower = body.toLowerCase();
-
+      const API = "https://copilot.microsoft.com/c/api/user/eligibility";
+      const HOME = "https://copilot.microsoft.com/";
+      const HEADERS = {
+        "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36 Edg/139.0.0.0",
+        "Accept":"application/json, text/plain, */*",
+        "Accept-Language":"en-US,en;q=0.9",
+        "Sec-Fetch-Site":"none",
+        "Sec-Fetch-Mode":"no-cors",
+        "Sec-Fetch-Dest":"empty",
+        "Referer":"https://copilot.microsoft.com/"
+      };
+      function finishFrom(status, body, allowHomeFallback) {
+        const lower = String(body || "").toLowerCase();
         if (/not available in your country|not available in your region|unsupported country|unsupported region|unavailable in your country|unavailable in your region/.test(lower)) {
-          return $done({content:"Not Available",backgroundColor:"#E5484D"});
+          $done({content:"Not Available",backgroundColor:"#E5484D"});
+          return true;
         }
         if (status === 403 || status === 451 || /access denied|forbidden|blocked/.test(lower)) {
-          return $done({content:"Blocked",backgroundColor:"#E5484D"});
+          $done({content:"Blocked",backgroundColor:"#E5484D"});
+          return true;
         }
         if (status >= 200 && status < 300) {
-          try {
-            JSON.parse(body || "{}");
-            return $done({content:"Available",backgroundColor:"#4F8EF7"});
-          } catch (_) {
-            if (body.length > 0) return $done({content:"Available",backgroundColor:"#4F8EF7"});
+          if (/isvisionenabled|copilot|microsoft/.test(lower) || lower.length > 0) {
+            $done({content:"Available",backgroundColor:"#4F8EF7"});
+            return true;
           }
         }
-        $done({content:"Network Error",backgroundColor:"#F59E0B"});
+        return false;
+      }
+      function fallback() {
+        $httpClient.get({url:HOME,timeout:10,headers:{
+          "User-Agent":HEADERS["User-Agent"],
+          "Accept":"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "Accept-Language":"en-US,en;q=0.9"
+        }}, (error,response,data) => {
+          if (error || !response) return $done({content:"Network Error",backgroundColor:"#F59E0B"});
+          const status = Number(response.status || response.statusCode || 0);
+          if (!finishFrom(status,data,false)) $done({content:"Network Error",backgroundColor:"#F59E0B"});
+        });
+      }
+      $httpClient.get({url:API,timeout:10,headers:HEADERS}, (error,response,data) => {
+        if (error || !response) return fallback();
+        const status = Number(response.status || response.statusCode || 0);
+        if (!finishFrom(status,data,true)) fallback();
       });
 
   ultimate-youtube:
@@ -309,7 +331,7 @@ script-providers:
         $done({content:"Available",backgroundColor:"#1DB954"});
       });
 
-  ultimate-apple:
+  ultimate-apple-v2:
     interval: 86400
     payload: |
       $httpClient.get({url:"https://gspe1-ssl.ls.apple.com/pep/gcc",timeout:8}, (error,response,data) => {
@@ -334,27 +356,66 @@ script-providers:
   ultimate-tiktok:
     interval: 86400
     payload: |
-      function country(body) {
-        let m = body.match(/(?:^|\n)loc=([A-Za-z]{2})(?:\n|$)/);
-        if (m) return m[1].toUpperCase();
-        m = body.match(/"region"\s*:\s*"([A-Za-z]{2})(?:-([A-Za-z]{2}))?"/);
-        if (m) return String(m[2] || m[1]).toUpperCase();
+      const UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1";
+      function pageRegion(body) {
+        const text = String(body || "");
+        const patterns = [
+          /"region"\s*:\s*"([A-Za-z]{2})"/,
+          /"region"\s*:\s*"[A-Za-z]{2}[-_]([A-Za-z]{2})"/,
+          /"countryCode"\s*:\s*"([A-Za-z]{2})"/,
+          /"country"\s*:\s*"([A-Za-z]{2})"/
+        ];
+        for (const re of patterns) {
+          const m = text.match(re);
+          if (m) return m[1].toUpperCase();
+        }
         return "";
       }
-      $httpClient.get({url:"https://www.tiktok.com/cdn-cgi/trace",timeout:8,headers:{"User-Agent":"Mozilla/5.0","Accept-Language":"en"}}, (error,response,data) => {
-        if (error || !response) return $done({content:"Network Error",backgroundColor:"#F59E0B"});
-        const status = Number(response.status || response.statusCode || 0);
-        const body = String(data || "");
-        const lower = body.toLowerCase();
-        if (status === 403 || status === 451 || /access denied|not available in your region|tiktok is not available/.test(lower)) {
-          return $done({content:"Not Available",backgroundColor:"#E5484D"});
+      function traceRegion(body) {
+        const m = String(body || "").match(/(?:^|\n)loc=([A-Za-z]{2})(?:\n|$)/);
+        return m ? m[1].toUpperCase() : "";
+      }
+      function get(url, accept) {
+        return new Promise(resolve => {
+          $httpClient.get({url:url,timeout:10,headers:{
+            "User-Agent":UA,
+            "Accept":accept || "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language":"en-US,en;q=0.9"
+          }}, (error,response,data) => {
+            if (error || !response) return resolve(null);
+            resolve({status:Number(response.status || response.statusCode || 0),body:String(data || "")});
+          });
+        });
+      }
+      function blocked(res) {
+        if (!res) return false;
+        const lower = res.body.toLowerCase();
+        return res.status === 403 || res.status === 451 || /access denied|not available in your region|tiktok is not available/.test(lower);
+      }
+      (async () => {
+        // Prefer TikTok's own page region. This reflects TikTok's service-side region
+        // rather than Cloudflare's generic IP geolocation from cdn-cgi/trace.
+        let home = await get("https://www.tiktok.com/");
+        if (blocked(home)) return $done({content:"Not Available",backgroundColor:"#E5484D"});
+        let cc = home && home.status >= 200 && home.status < 400 ? pageRegion(home.body) : "";
+
+        if (!cc) {
+          const explore = await get("https://www.tiktok.com/explore");
+          if (blocked(explore)) return $done({content:"Not Available",backgroundColor:"#E5484D"});
+          if (explore && explore.status >= 200 && explore.status < 400) cc = pageRegion(explore.body);
         }
-        if (status >= 200 && status < 300) {
-          const cc = country(body);
-          return $done({content:cc ? `Available (${cc})` : "Available",backgroundColor:"#333333"});
+        if (cc) return $done({content:`Available (${cc})`,backgroundColor:"#333333"});
+
+        // Fallback only: Cloudflare trace location.
+        const trace = await get("https://www.tiktok.com/cdn-cgi/trace","text/plain,*/*");
+        if (blocked(trace)) return $done({content:"Not Available",backgroundColor:"#E5484D"});
+        if (trace && trace.status >= 200 && trace.status < 300) {
+          const loc = traceRegion(trace.body);
+          return $done({content:loc ? `Available (${loc})` : "Available",backgroundColor:"#333333"});
         }
+        if ((home && home.status >= 200 && home.status < 400)) return $done({content:"Available",backgroundColor:"#333333"});
         $done({content:"Network Error",backgroundColor:"#F59E0B"});
-      });
+      })().catch(() => $done({content:"Network Error",backgroundColor:"#F59E0B"}));
 
   ultimate-bilibili:
     interval: 86400

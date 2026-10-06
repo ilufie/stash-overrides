@@ -227,7 +227,7 @@ script-providers:
         if (error) {
           $done({
             content: "Network Error",
-            backgroundColor: "",
+            backgroundColor: "#F59E0B",
           });
           return;
         }
@@ -239,7 +239,7 @@ script-providers:
         ) {
           $done({
             content: "N/A",
-            backgroundColor: "",
+            backgroundColor: "#E5484D",
           });
           return;
         }
@@ -247,13 +247,13 @@ script-providers:
         if (body.includes("copilot") || body.includes("microsoft")) {
           $done({
             content: "Available",
-            backgroundColor: "#0078D4",
+            backgroundColor: "#4F8EF7",
           });
           return;
         }
         $done({
           content: "Unknown",
-          backgroundColor: "",
+          backgroundColor: "#F59E0B",
         });
       }
 

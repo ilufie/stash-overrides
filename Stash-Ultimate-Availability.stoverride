@@ -5,7 +5,7 @@
 # Normalized status vocabulary:
 #   Available (XX) = available, region/country extracted
 #   Available      = available, region unknown
-#   N/A / Not Available = current egress IP does not support the service
+#   Not Available   = current egress IP does not support the service
 #   Blocked        = service explicitly rejects the egress IP/region
 #   Network Error  = network failure / timeout / unrecognized transport failure
 # Netflix keeps its native unlock levels:
@@ -187,7 +187,7 @@ script-providers:
         if (error) return $done({content:"Network Error",backgroundColor:"#F59E0B"});
         const body = String(data || "").toLowerCase();
         if (/not available in your country|unsupported country|unavailable in your region/.test(body)) {
-          return $done({content:"N/A",backgroundColor:"#E5484D"});
+          return $done({content:"Not Available",backgroundColor:"#E5484D"});
         }
         if (body.includes("gemini")) return $done({content:"Available",backgroundColor:"#4F7DF3"});
         $done({content:"Network Error",backgroundColor:"#F59E0B"});
@@ -279,7 +279,7 @@ script-providers:
         if (error) return $done({content:"Network Error",backgroundColor:"#F59E0B"});
         const body = String(data || "").toLowerCase();
         if (/not available in your region|not available in your country|service is unavailable/.test(body)) {
-          return $done({content:"N/A",backgroundColor:"#E5484D"});
+          return $done({content:"Not Available",backgroundColor:"#E5484D"});
         }
         if (body.includes("disney")) return $done({content:"Available",backgroundColor:"#2463EB"});
         $done({content:"Network Error",backgroundColor:"#F59E0B"});
@@ -294,7 +294,7 @@ script-providers:
         try { json = JSON.parse(String(data || "")); } catch (_) {}
         if (!json) return $done({content:"Network Error",backgroundColor:"#F59E0B"});
         const cc = String(json.country || "").toUpperCase();
-        if (json.is_country_launched === false) return $done({content:"N/A",backgroundColor:"#E5484D"});
+        if (json.is_country_launched === false) return $done({content:"Not Available",backgroundColor:"#E5484D"});
         if (cc) return $done({content:`Available (${cc})`,backgroundColor:"#1DB954"});
         $done({content:"Available",backgroundColor:"#1DB954"});
       });

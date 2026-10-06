@@ -223,8 +223,11 @@ script-providers:
               "User-Agent": UA,
               "Accept": accept || "*/*",
               "Accept-Language": "en-US,en;q=0.9",
-              "Referer": "https://copilot.microsoft.com/"
-            }
+              "Referer": "https://copilot.microsoft.com/",
+              "X-Stash-Selected-Proxy": encodeURIComponent("🚀 节点选择")
+            },
+            "auto-redirect": true,
+            "auto-cookie": true
           }, (error, response, data) => {
             resolve({
               error: !!error || !response,

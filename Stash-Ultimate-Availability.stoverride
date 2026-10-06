@@ -209,61 +209,19 @@ script-providers:
   ultimate-copilot:
     interval: 86400
     payload: |
-      async function request(method, params) {
-        return new Promise((resolve, reject) => {
-          const httpMethod = $httpClient[method.toLowerCase()];
-          httpMethod(params, (error, response, data) => {
-            resolve({ error, response, data });
-          });
-        });
-      }
+      const URL = "https://copilot.microsoft.com";
+      $httpClient.get({url:URL,timeout:8,headers:{"User-Agent":"Mozilla/5.0"}}, (error,response,data) => {
+        if (error || !response) return $done({content:"Network Error",backgroundColor:"#F59E0B"});
+        const body = String(data || "").toLowerCase();
 
-      async function main() {
-        const { error, response, data } = await request(
-          "GET",
-          "https://copilot.microsoft.com"
-        );
-
-        if (error) {
-          $done({
-            content: "Network Error",
-            backgroundColor: "#F59E0B",
-          });
-          return;
+        if (/not available in your country|not available in your region|unsupported country|unsupported region|unavailable in your country|unavailable in your region/.test(body)) {
+          return $done({content:"Not Available",backgroundColor:"#E5484D"});
         }
-        const body = (data || "").toLowerCase();
-        if (
-          body.includes("not available in your country") ||
-          body.includes("unsupported country") ||
-          body.includes("unavailable in your region")
-        ) {
-          $done({
-            content: "N/A",
-            backgroundColor: "#E5484D",
-          });
-          return;
-        }
-
         if (body.includes("copilot") || body.includes("microsoft")) {
-          $done({
-            content: "Available",
-            backgroundColor: "#4F8EF7",
-          });
-          return;
+          return $done({content:"Available",backgroundColor:"#4F8EF7"});
         }
-        $done({
-          content: "Unknown",
-          backgroundColor: "#F59E0B",
-        });
-      }
-
-      (async () => {
-        main()
-          .then((_) => {})
-          .catch((error) => {
-            $done({});
-          });
-      })();
+        $done({content:"Network Error",backgroundColor:"#F59E0B"});
+      });
 
   ultimate-youtube:
     interval: 86400
